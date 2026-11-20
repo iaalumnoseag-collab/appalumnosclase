@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buzón de Cupones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Concepto: una habitación en píxeles sobre fondo negro. Arriba el calendario de clases, abajo el cuarto del alumno. */
+:root{
+  --bg:#000; --panel:#12122a; --panel2:#1b1b3d; --line:#4b4bb0; --ink:#e8ecff; --dim:#8d92c4;
+  --gold:#ffcc33; --cyan:#3de0ff; --pink:#ff4fa3; --green:#5be37d; --red:#ff5a4d; --orange:#ff9f43;
+  --f-title:'Press Start 2P','Courier New',monospace;
+  --f-body:'VT323','Courier New',monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:21px;line-height:1.25;padding-block:14px 40px;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+#app{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3,.h{font-family:var(--f-title);font-weight:400;line-height:1.55;margin:0}
+h1{font-size:18px;color:var(--gold)}
+h2{font-size:12px;color:var(--cyan)}
+.h.sm{font-size:10px}
+p{margin:0}
+.dim{color:var(--dim)}
+.center{text-align:center}
+.warn{color:var(--orange)}
+.px{image-rendering:pixelated;image-rendering:crisp-edges;width:32px;height:32px;flex:none}
+.px.mini{width:16px;height:16px}
+.px.av{width:48px;height:64px}
+.px.avs{width:30px;height:40px}
+
+.box{background:var(--panel);padding:14px;margin:4px;position:relative;
+  box-shadow:0 -4px 0 0 var(--line),0 4px 0 0 var(--line),-4px 0 0 0 var(--line),4px 0 0 0 var(--line)}
+.row{display:flex;align-items:center;gap:10px}
+.row.between{justify-content:space-between}
+.row.wrap{flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px}
+.demo{background:#3a2a00;color:var(--gold);padding:8px 12px;font-size:19px}
+
+.btn{--b:var(--gold);--bl:#ffe27a;--bd:#b8860b;font-family:var(--f-title);font-size:10px;line-height:1.4;color:#000;
+  background:var(--b);border:0;padding:12px 14px;cursor:pointer;
+  box-shadow:inset 3px 3px 0 var(--bl),inset -3px -3px 0 var(--bd)}
+.btn:active{transform:translateY(2px)}
+.btn.cy{--b:#3de0ff;--bl:#9bf0ff;--bd:#1597b5}
+.btn.pk{--b:#ff4fa3;--bl:#ff9acb;--bd:#b01f6b;color:#fff}
+.btn.gr{--b:#5be37d;--bl:#a6f5b8;--bd:#2c9a4a}
+.btn.rd{--b:#ff5a4d;--bl:#ff9d94;--bd:#b32a20;color:#fff}
+.btn.gh{--b:transparent;--bl:var(--line);--bd:var(--line);color:var(--ink)}
+.btn.on{--b:#2a2a66;--bl:var(--cyan);--bd:var(--cyan);color:var(--cyan)}
+.btn.sm{font-size:8px;padding:9px 10px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.linkbtn{background:none;border:0;color:var(--cyan);font:inherit;text-decoration:underline;cursor:pointer;padding:6px}
+:focus-visible{outline:3px dashed var(--cyan);outline-offset:2px}
+
+label{display:flex;flex-direction:column;gap:6px;font-size:20px;color:var(--dim)}
+input,select,textarea{font:inherit;font-size:21px;color:var(--ink);background:#06061a;border:0;padding:9px 11px;width:100%;
+  box-shadow:inset 0 0 0 3px var(--line);border-radius:0}
+textarea{min-height:96px;resize:vertical}
+input[type=date]{width:auto}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.who{display:flex;align-items:center;gap:12px}
+.who .h{font-size:11px;color:var(--gold)}
+.coins{display:flex;align-items:center;gap:4px;font-family:var(--f-title);font-size:11px}
+.tag{font-family:var(--f-title);font-size:8px;padding:5px 7px;background:var(--panel2);color:var(--cyan)}
+.tag.ok{background:#12381f;color:var(--green)}
+.pill{background:#4a1410;color:var(--red);font-family:var(--f-title);font-size:8px;padding:6px 8px}
+
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calbody{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;margin-top:12px}
+@media (max-width:680px){.calbody{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{font-family:var(--f-title);font-size:8px;color:var(--dim);text-align:center;padding:2px 0 4px}
+.cell{min-height:44px;background:var(--panel2);border:0;color:var(--ink);font-family:var(--f-body);font-size:20px;
+  position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px}
+.cell.empty{background:transparent;cursor:default}
+.cell.we{opacity:.35}
+.cell.today{box-shadow:inset 0 0 0 3px var(--gold)}
+.cell.sel{background:#2f2f78}
+.cell .px{width:15px;height:15px}
+.cell .dot{position:absolute;top:3px;right:3px;width:6px;height:6px;background:var(--pink)}
+.day{background:var(--panel2);padding:12px;display:flex;flex-direction:column;gap:8px;align-content:start}
+.day .when{font-family:var(--f-title);font-size:9px;color:var(--gold);text-transform:capitalize;line-height:1.7}
+.tasks{white-space:pre-wrap;border-left:4px solid var(--pink);padding-left:10px}
+
+.room-wrap{display:flex;flex-direction:column;gap:12px;padding:4px}
+canvas#room{width:100%;height:auto;aspect-ratio:160/90;display:block;background:#000;
+  image-rendering:pixelated;image-rendering:crisp-edges;box-shadow:0 0 0 4px var(--line)}
+canvas#room.hot{cursor:pointer}
+.menu{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.hint{text-align:center;color:var(--dim);font-size:19px}
+.badge{display:inline-block;margin-left:6px;background:#000;color:var(--gold);padding:2px 5px}
+
+.drawer{display:flex;flex-direction:column;gap:12px}
+.drawer[hidden]{display:none}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--panel2);padding:10px 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+.item.plain{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.slots{display:flex;gap:10px}
+.slot{width:64px;height:64px;background:#06061a;box-shadow:inset 0 0 0 3px var(--line);display:flex;align-items:center;justify-content:center}
+.slot .px{width:44px;height:44px}
+.avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.avbtn{background:var(--panel2);border:0;padding:8px;cursor:pointer;display:flex;justify-content:center;box-shadow:inset 0 0 0 3px transparent}
+.avbtn.on{box-shadow:inset 0 0 0 3px var(--gold);background:#2f2f78}
+
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.steps i{height:8px;background:#06061a;display:block}
+.steps i.f{background:var(--cyan)}
+.st-redo .steps i.f{background:var(--orange)}
+.st-done .steps i.f{background:var(--green)}
+.stat{display:flex;align-items:center;gap:10px}
+.stat .lbl{font-family:var(--f-title);font-size:10px;line-height:1.5}
+.st-send .lbl{color:var(--cyan)} .st-seen .lbl{color:#fff} .st-work .lbl{color:var(--gold)}
+.st-redo .lbl{color:var(--orange)} .st-done .lbl{color:var(--green)}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{50%{opacity:.25}}
+.st-send .px{animation:hop .8s steps(2) infinite}
+.st-seen .px{animation:blink 1s steps(2) infinite}
+.st-work .px{animation:spin 1.6s steps(8) infinite}
+.st-redo .px{animation:spin 1.6s steps(8) infinite reverse}
+.st-done .px{animation:hop .7s steps(2) infinite}
+
+.rolls{display:flex;flex-direction:column;gap:8px}
+.roll{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--panel2);padding:10px 12px}
+.roll.on{background:#12381f}
+.right{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.req{background:var(--panel2);padding:12px;display:flex;flex-direction:column;gap:8px}
+.req .desc{white-space:pre-wrap}
+.stats{display:flex;flex-wrap:wrap;gap:16px;font-family:var(--f-title);font-size:9px;color:var(--dim)}
+.stats b{color:var(--gold);font-weight:400}
+
+.login{max-width:520px;margin:30px auto 0;display:flex;flex-direction:column;gap:16px;align-items:stretch}
+.login .logo{display:flex;gap:10px;justify-content:center}
+.login .logo .px{width:48px;height:48px}
+.msg{min-height:24px;color:var(--orange);text-align:center}
+
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,520px);
+  background:#000;color:var(--ink);padding:12px 16px;z-index:50;box-shadow:0 0 0 4px var(--gold)}
+.toast.err{box-shadow:0 0 0 4px var(--red)}
+.toast[hidden]{display:none}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ===== Configuración =====
+   Para compartir datos entre todos los dispositivos, pega aquí la URL de tu Firebase Realtime Database
+   (mira el archivo LEEME.md). Si lo dejas vacío, la app funciona en modo prueba, solo en este navegador. */
+const CONFIG = { FIREBASE_URL: '' };
+
+const MAX_COUPONS = 2;
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STATUS = [
+  { k:'enviado',    label:'ENVIADO',      icon:'mail',  cls:'st-send', txt:'Tu petición viaja al buzón.' },
+  { k:'recibido',   label:'RECIBIDO',     icon:'eye',   cls:'st-seen', txt:'El profe la ha visto.' },
+  { k:'proceso',    label:'EN PROCESO',   icon:'gear',  cls:'st-work', txt:'Se está creando.' },
+  { k:'rehaciendo', label:'REHACIÉNDOSE', icon:'gearo', cls:'st-redo', txt:'Ajustando y mejorando.' },
+  { k:'entregado',  label:'ENTREGADO',    icon:'chest', cls:'st-done', txt:'¡Listo para ti!' }
+];
+const TYPES = ['Logotipo','Página web','Aplicación','Vídeo','Otro'];
+const BGS = [['noche','Noche estrellada'],['lluvia','Lluvia'],['ciudad','Ciudad'],['atardecer','Atardecer'],['espacio','Espacio']];
+
+/* ===== Utilidades ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const longDate = s => parseDay(s).toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
+const mem = {};
+const kv = {
+  get(k){ try { const v = localStorage.getItem(k); return v === null ? (mem[k] ?? null) : v; } catch (e) { return mem[k] ?? null; } },
+  set(k, v){ mem[k] = v; try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k){ delete mem[k]; try { localStorage.removeItem(k); } catch (e) {} }
+};
+async function hashCode(s){
+  const txt = 'buzon-cupones:' + s;
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    let h = 5381; for (const ch of txt) h = ((h << 5) + h + ch.charCodeAt(0)) >>> 0;
+    return 'x' + h.toString(16);
+  }
+}
+let toastTimer = null;
+function toast(text, kind){
+  const el = $('#toast'); el.textContent = text; el.className = 'toast' + (kind === 'err' ? ' err' : ''); el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 3800);
+}
+function speak(text){
+  try {
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'es-ES'; u.rate = .95;
+    const v = speechSynthesis.getVoices().find(v => /^es/i.test(v.lang)); if (v) u.voice = v;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ===== Datos: Firebase (REST) o modo prueba local ===== */
+function setPath(obj, path, val){
+  const p = path.split('/'); let o = obj;
+  for (let i = 0; i < p.length - 1; i++) { if (typeof o[p[i]] !== 'object' || o[p[i]] === null) o[p[i]] = {}; o = o[p[i]]; }
+  if (val === null) delete o[p[p.length - 1]]; else o[p[p.length - 1]] = val;
+}
+const Store = {
+  remote: CONFIG.FIREBASE_URL.replace(/\/+$/, ''),
+  async load(){
+    if (this.remote) {
+      const r = await fetch(this.remote + '/bc.json', { cache:'no-store' });
+      if (!r.ok) throw new Error('load');
+      return (await r.json()) || {};
+    }
+    try { return JSON.parse(kv.get('bc_db') || '{}'); } catch (e) { return {}; }
+  },
+  async write(path, val){
+    if (this.remote) {
+      const r = await fetch(`${this.remote}/bc/${path}.json`, {
+        method: val === null ? 'DELETE' : 'PUT', headers:{ 'Content-Type':'application/json' },
+        body: val === null ? undefined : JSON.stringify(val)
+      });
+      if (!r.ok) throw new Error('write');
+      return;
+    }
+    let d = {}; try { d = JSON.parse(kv.get('bc_db') || '{}'); } catch (e) {}
+    setPath(d, path, val); kv.set('bc_db', JSON.stringify(d));
+  }
+};
+const normalize = raw => ({ config: raw.config || {}, students: raw.students || {}, attendance: raw.attendance || {}, requests: raw.requests || {}, tasks: raw.tasks || {} });
+let db = normalize({});
+let lastJSON = '';
+let connected = true;
+
+async function put(path, val){
+  setPath(db, path, val); lastJSON = '';
+  try { await Store.write(path, val); connected = true; }
+  catch (e) { connected = false; toast('No se pudo guardar. Revisa la conexión.', 'err'); }
+  refreshAll();
+}
+async function poll(first){
+  try {
+    const raw = await Store.load(); connected = true;
+    const s = JSON.stringify(raw);
+    if (s !== lastJSON) { lastJSON = s; db = normalize(raw); if (!first) onData(); }
+  } catch (e) { connected = false; }
+  const c = $('#conn'); if (c) c.hidden = connected;
+}
+
+/* ===== Sprites de píxeles ===== */
+const PAL = { y:'#b8860b', Y:'#ffcc33', o:'#fff3a0', g:'#5be37d', r:'#ff5a4d', w:'#e8ecff', b:'#3d6bff', k:'#0b0b1e',
+  s:'#9aa0c8', S:'#5b6190', n:'#6b3a12', N:'#a8642a', p:'#ff4fa3', c:'#3de0ff', a:'#ff9f43', A:'#c46a1a', m:'#8d92c4' };
+const SPR = {
+  coin: ['..yyyy..','.yYYYYy.','yYYooYYy','yYYooYYy','yYYooYYy','yYYooYYy','.yYYYYy.','..yyyy..'],
+  check:['........','.......g','......gg','g....gg.','gg..gg..','.gggg...','..gg....','........'],
+  cross:['r......r','.r....r.','..r..r..','...rr...','...rr...','..r..r..','.r....r.','r......r'],
+  mail: ['........','wwwwwwww','wbwwwwbw','wwbwwbww','wwwbbwww','wwwwwwww','wwwwwwww','........'],
+  eye:  ['........','..wwww..','.wwbbww.','wwbkkbww','wwbkkbww','.wwbbww.','..wwww..','........'],
+  gear: ['...ss...','.s.ss.s.','..sSSs..','ssSssSss','ssSssSss','..sSSs..','.s.ss.s.','...ss...'],
+  chest:['.nnnnnn.','nNNNNNNn','nNNNNNNn','nnnYYnnn','nNNNYNNn','nNNNNNNn','nNNNNNNn','.nnnnnn.'],
+  star: ['...YY...','...YY...','YYYYYYYY','.YYYYYY.','..YYYY..','.YY..YY.','YY....YY','........'],
+  box:  ['..mmmm..','.mwwwwm.','mwwwwwwm','mwwkkwwm','mwwwwwwm','mmmmmmmm','...mm...','...mm...']
+};
+SPR.gearo = SPR.gear.map(r => r.replace(/s/g, 'a').replace(/S/g, 'A'));
+const sprCache = {};
+function spriteURL(name, scale = 4){
+  const key = name + scale; if (sprCache[key]) return sprCache[key];
+  const rows = SPR[name], cv = document.createElement('canvas'); cv.width = rows[0].length * scale; cv.height = rows.length * scale;
+  const x = cv.getContext('2d');
+  rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') { x.fillStyle = PAL[ch]; x.fillRect(i * scale, j * scale, scale, scale); } }));
+  return (sprCache[key] = cv.toDataURL());
+}
+const px = (name, cls = '') => `<img class="px ${cls}" src="${spriteURL(name)}" alt="">`;
+
+/* Avatares: 12 columnas x 16 filas */
+const BASE = ['....HHHH....','...HHHHHH...','..HHHHHHHH..','..HSSSSSSH..','..HSESSESH..','..HSSSSSSH..',
+  '...SSMMSS...','....SSSS....','..TTTTTTTT..','.TTTTTTTTTT.','.STTTTTTTTS.','.STTTTTTTTS.',
+  '..TTTTTTTT..','..PPP..PPP..','..PPP..PPP..','..BBB..BBB..'];
+const SKINS = ['#f2c9a0','#e0a878','#b9774a','#8a5230','#ffdcb8'];
+const AV = [
+  { n:'Gorra roja',   style:'cap',    hair:'#3b2a1a', skin:0, shirt:'#3de0ff', pants:'#2b3a8f', cap:'#ff5a4d' },
+  { n:'Melena dorada',style:'long',   hair:'#ffcc33', skin:4, shirt:'#ff4fa3', pants:'#3a2f6b' },
+  { n:'Pinchos cian', style:'spiky',  hair:'#3de0ff', skin:1, shirt:'#5be37d', pants:'#1d3a2a' },
+  { n:'Cresta rosa',  style:'mohawk', hair:'#ff4fa3', skin:2, shirt:'#ffcc33', pants:'#2a2a40', glasses:1 },
+  { n:'Calvo cool',   style:'bald',   hair:'#000000', skin:3, shirt:'#e8ecff', pants:'#2b3a8f', glasses:1 },
+  { n:'Clásico',      style:'short',  hair:'#1a1a1a', skin:0, shirt:'#ff9f43', pants:'#3a2f6b' },
+  { n:'Melena negra', style:'long',   hair:'#1a1a1a', skin:1, shirt:'#b06bff', pants:'#1d1d40' },
+  { n:'Pelirroja',    style:'long',   hair:'#d9531e', skin:4, shirt:'#3de0ff', pants:'#2a2a40', glasses:1 },
+  { n:'Gorra azul',   style:'cap',    hair:'#8a5a2b', skin:2, shirt:'#ff5a4d', pants:'#2a2a40', cap:'#3d6bff' },
+  { n:'Rubio',        style:'short',  hair:'#ffd36b', skin:0, shirt:'#5be37d', pants:'#2b3a8f', glasses:1 },
+  { n:'Pinchos rosa', style:'spiky',  hair:'#ff4fa3', skin:3, shirt:'#e8ecff', pants:'#3a2f6b' },
+  { n:'Cresta azul',  style:'mohawk', hair:'#3d6bff', skin:1, shirt:'#ff4fa3', pants:'#1d1d40' }
+];
+const avRowsCache = {};
+function avRows(i){
+  if (avRowsCache[i]) return avRowsCache[i];
+  const a = AV[i % AV.length], rows = BASE.map(r => r.split(''));
+  const set = (r, str) => { rows[r] = str.split(''); };
+  switch (a.style) {
+    case 'long': for (const r of [6, 7, 8]) { rows[r][2] = 'H'; rows[r][9] = 'H'; } break;
+    case 'spiky': set(0, '...H.HH.H...'); break;
+    case 'cap': set(0, '....CCCC....'); set(1, '...CCCCCC...'); set(2, '..CCCCCCCC..'); break;
+    case 'bald': set(0, '............'); set(1, '....SSSS....'); set(2, '..SSSSSSSS..'); for (const r of [3, 4, 5]) { rows[r][2] = 'S'; rows[r][9] = 'S'; } break;
+    case 'mohawk': set(0, '.....HH.....'); set(1, '.....HH.....'); set(2, '....HHHH....'); for (const r of [3, 4, 5]) { rows[r][2] = 'S'; rows[r][9] = 'S'; } break;
+  }
+  if (a.glasses) { for (const c of [3, 5, 6, 8]) rows[4][c] = 'Z'; }
+  return (avRowsCache[i] = rows);
+}
+function avColors(i){
+  const a = AV[i % AV.length], S = SKINS[a.skin];
+  return { H:a.hair, S, E:'#0b0b1e', M:'#a0463a', T:a.shirt, P:a.pants, B:'#2a2a40', C:a.cap || a.hair, Z:'#0b0b1e' };
+}
+function drawChar(ctx, i, x, y, sc, blink){
+  const rows = avRows(i), col = avColors(i);
+  for (let r = 0; r < rows.length; r++) for (let c = 0; c < 12; c++) {
+    const k = rows[r][c]; if (k === '.') continue;
+    ctx.fillStyle = (k === 'E' && blink) ? col.S : col[k]; ctx.fillRect(x + c * sc, y + r * sc, sc, sc);
+  }
+}
+const avCache = {};
+function avatarURL(i){
+  i = (+i || 0) % AV.length; if (avCache[i]) return avCache[i];
+  const cv = document.createElement('canvas'); cv.width = 48; cv.height = 64;
+  drawChar(cv.getContext('2d'), i, 0, 0, 4, false);
+  return (avCache[i] = cv.toDataURL());
+}
+
+/* ===== Habitación animada ===== */
+function drawRoom(ctx, f, S){
+  const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  R(0, 0, 160, 62, '#1d1b3f');
+  for (let y = 0; y < 62; y += 8) R(0, y, 160, 1, '#25235a');
+  for (let x = 0; x < 160; x += 16) R(x, 0, 1, 62, '#211f4b');
+  R(0, 60, 160, 3, '#0e0d24');
+  R(0, 63, 160, 27, '#3a2748');
+  for (let y = 63, k = 0; y < 90; y += 7, k++) { R(0, y, 160, 1, '#2b1c37'); for (let x = (k * 23) % 32; x < 160; x += 32) R(x, y, 1, 7, '#2b1c37'); }
+
+  // Ventana con fondo animado
+  R(104, 10, 40, 30, '#6b4a2a');
+  const wx = 107, wy = 13, ww = 34, wh = 24;
+  const bg = S.bg;
+  if (bg === 'lluvia') {
+    R(wx, wy, ww, wh, '#2a3050'); R(wx + 1, wy + 1, 14, 4, '#4a5070'); R(wx + 18, wy + 3, 12, 3, '#4a5070');
+    for (let i = 0; i < 14; i++) R(wx + (i * 7 + 3) % ww, wy + ((f * 2 + i * 5) % (wh - 2)), 1, 3, '#8fb4ff');
+  } else if (bg === 'ciudad') {
+    R(wx, wy, ww, wh, '#2b1a4a'); R(wx, wy + 14, ww, 10, '#3a2060');
+    const bl = [[0, 12, 7], [8, 16, 6], [15, 10, 8], [24, 14, 6], [30, 18, 4]];
+    bl.forEach(([bx, bh, bw], n) => {
+      R(wx + bx, wy + wh - bh, bw, bh, '#12102a');
+      for (let wy2 = wy + wh - bh + 2; wy2 < wy + wh - 1; wy2 += 3) for (let wx2 = wx + bx + 1; wx2 < wx + bx + bw - 1; wx2 += 2)
+        if (((wx2 * 7 + wy2 * 3 + n + (f >> 4)) % 5) < 3) R(wx2, wy2, 1, 1, '#ffd36b');
+    });
+  } else if (bg === 'atardecer') {
+    R(wx, wy, ww, 8, '#ff7a5c'); R(wx, wy + 8, ww, 8, '#ffb35c'); R(wx, wy + 16, ww, 8, '#ffd98a');
+    const sy = wy + 16 + Math.round(Math.sin(f / 20) * 1);
+    R(wx + 12, sy - 5, 10, 5, '#fff3a0'); R(wx + 10, sy - 3, 14, 3, '#fff3a0');
+    R(wx, wy + 20, ww, 4, '#5a2a4a');
+  } else if (bg === 'espacio') {
+    R(wx, wy, ww, wh, '#02020c');
+    for (let i = 0; i < 12; i++) R(wx + ((i * 11 + (f >> 1)) % ww), wy + (i * 7) % wh, 1, 1, i % 3 ? '#e8ecff' : '#3de0ff');
+    R(wx + 22, wy + 5, 8, 8, '#c8643a'); R(wx + 24, wy + 7, 4, 2, '#e8905a');
+  } else {
+    R(wx, wy, ww, wh, '#0a0a2a');
+    [[3, 3], [11, 7], [23, 2], [29, 15], [5, 17], [19, 11]].forEach(([sx, sy], n) => { if (((f >> 1) + n * 3) % 12 < 9) R(wx + sx, wy + sy, 1, 1, '#e8ecff'); });
+    R(wx + 24, wy + 3, 5, 5, '#f4f1d0'); R(wx + 26, wy + 3, 3, 3, '#0a0a2a');
+  }
+  R(123, 13, 2, 24, '#6b4a2a'); R(107, 24, 34, 2, '#6b4a2a');
+
+  // Póster
+  R(44, 12, 18, 24, '#e8ecff'); R(45, 13, 16, 22, '#ff4fa3'); R(49, 18, 8, 8, '#ffcc33'); R(51, 20, 4, 4, '#fff3a0'); R(47, 29, 12, 2, '#e8ecff'); R(47, 32, 8, 1, '#e8ecff');
+
+  // Estantería con libros
+  R(6, 12, 28, 48, '#4a2e18'); R(8, 14, 24, 44, '#2a190c');
+  [26, 38, 50].forEach(y => R(8, y, 24, 2, '#4a2e18'));
+  const bc = ['#ff5a4d', '#3de0ff', '#ffcc33', '#5be37d', '#b06bff', '#ff9f43'];
+  [26, 38, 50, 58].forEach((base, k) => {
+    for (let x = 9; x < 30;) { const w = 3 + ((x + k) % 2), h = 6 + ((x * 3 + k * 5) % 6); R(x, base - h, w, h, bc[(x + k) % 6]); x += w + 1; }
+  });
+
+  // Escritorio y ordenador
+  R(38, 54, 64, 4, '#7a5230'); R(38, 58, 64, 1, '#4a3018'); R(40, 59, 3, 15, '#5a3a1f'); R(97, 59, 3, 15, '#5a3a1f');
+  R(52, 34, 30, 18, '#2a2a40'); R(54, 36, 26, 13, '#071a2a');
+  const sf = f >> 2;
+  for (let i = 0; i < 4; i++) R(56, 37 + ((i * 3 + sf) % 11), 7 + ((i * 7 + sf) % 14), 1, i % 2 ? '#5be37d' : '#3de0ff');
+  R(65, 52, 4, 2, '#1a1a30'); R(60, 53, 14, 1, '#1a1a30');
+  R(56, 55, 16, 2, '#c8cce8'); for (let x = 57; x < 71; x += 2) R(x, 55, 1, 1, '#6a6f98');
+  R(95, 49, 5, 5, '#e8ecff'); R(100, 50, 1, 3, '#e8ecff');
+  R(96, 45 - ((f >> 2) % 3), 1, 2, '#6a6f98');
+  for (let i = 0; i < Math.min(S.coupons, 2); i++) {
+    const cx = 84 + i * 6; R(cx, 49, 5, 5, '#b8860b'); R(cx + 1, 48, 3, 5, '#ffcc33');
+    if ((f + i * 7) % 18 < 2) R(cx + 1, 47, 1, 1, '#ffffff');
+  }
+
+  // Planta
+  const sway = Math.sin(f / 10) > 0 ? 1 : 0;
+  R(142, 66, 10, 8, '#a8642a'); R(141, 65, 12, 2, '#c47a3a');
+  R(146, 52, 2, 14, '#2f8f4a'); R(141 + sway, 56, 6, 3, '#3fbf5f'); R(148 - sway, 53, 6, 3, '#3fbf5f'); R(143 + sway, 49, 4, 3, '#3fbf5f');
+
+  // Alfombra
+  R(58, 72, 66, 14, '#5a1f4a'); R(60, 74, 62, 10, '#7d2f66');
+  for (let x = 62; x < 120; x += 6) R(x, 78, 3, 2, '#ffcc33');
+
+  // Avatar
+  R(108, 84, 22, 2, '#00000066');
+  const bob = (f >> 3) % 2, blink = f % 44 < 2;
+  drawChar(ctx, S.avatar, 106, 52 - bob, 2, blink);
+}
+const HOT = [['avatar', [106, 52, 24, 32]], ['cupon', [50, 34, 34, 22]], ['fondo', [104, 10, 40, 30]], ['inventario', [6, 12, 28, 48]], ['tablon', [44, 12, 18, 24]]];
+function hotAt(ev){
+  const r = ev.currentTarget.getBoundingClientRect();
+  const x = (ev.clientX - r.left) / r.width * 160, y = (ev.clientY - r.top) / r.height * 90;
+  const h = HOT.find(([, [a, b, w, hh]]) => x >= a && x < a + w && y >= b && y < b + hh);
+  return h ? h[0] : null;
+}
+let roomTimer = null, frame = 0;
+function roomState(){
+  const me = db.students[session && session.id]; if (!me) return null;
+  return { avatar:me.avatar || 0, bg:me.bg || 'noche', coupons:me.coupons || 0 };
+}
+function redrawRoom(){
+  const cv = $('#room'); if (!cv) return; const S = roomState(); if (!S) return;
+  const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false; drawRoom(ctx, frame, S);
+}
+function startRoom(){
+  stopRoom();
+  const cv = $('#room'); if (!cv) return;
+  redrawRoom();
+  if (!REDUCE) roomTimer = setInterval(() => { frame++; redrawRoom(); }, 125);
+  cv.addEventListener('click', e => { const h = hotAt(e); if (h) openDrawer(h === 'cupon' ? 'cupon' : h); });
+  cv.addEventListener('mousemove', e => cv.classList.toggle('hot', !!hotAt(e)));
+}
+function stopRoom(){ clearInterval(roomTimer); roomTimer = null; }
+
+/* ===== Música (chiptune generado en el navegador) ===== */
+const TRACKS = [
+  { name:'Aula',  dur:.2,  wave:'square',   lead:[72,76,79,76,74,77,81,77,72,76,79,84,83,79,76,0], bass:[48,0,48,0,43,0,43,0,45,0,45,0,43,0,43,0] },
+  { name:'Noche', dur:.32, wave:'triangle', lead:[69,0,72,0,76,0,72,0,67,0,71,0,74,0,71,0],       bass:[45,0,0,0,43,0,0,0,41,0,0,0,43,0,0,0] },
+  { name:'Turbo', dur:.14, wave:'square',   lead:[64,67,71,67,64,67,71,76,62,66,69,66,62,66,69,74], bass:[40,40,0,40,38,38,0,38,36,36,0,36,38,38,0,38] }
+];
+const Music = {
+  ctx:null, timer:null, i:0, t:null, vol:.05,
+  play(n){
+    this.stop(); if (n == null || n < 0) return;
+    try { this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); } catch (e) { return; }
+    this.t = TRACKS[n]; this.i = 0; this.step();
+  },
+  stop(){ clearTimeout(this.timer); this.timer = null; this.t = null; },
+  step(){
+    const t = this.t; if (!t) return; const k = this.i++;
+    const l = t.lead[k % t.lead.length], b = t.bass[k % t.bass.length];
+    if (l) this.note(l, t.dur * .9, t.wave, this.vol);
+    if (b) this.note(b, t.dur * 1.6, 'triangle', this.vol * 1.4);
+    this.timer = setTimeout(() => this.step(), t.dur * 1000);
+  },
+  note(m, d, w, v){
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain(), n = c.currentTime;
+    o.type = w; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(.0001, n + d);
+    o.connect(g); g.connect(c.destination); o.start(n); o.stop(n + d + .02);
+  }
+};
+function applyMusic(){
+  const me = session && db.students[session.id];
+  Music.play(me && me.music >= 0 ? me.music : -1);
+}
+window.addEventListener('pointerdown', () => { if (!Music.t && session && session.role === 'student') applyMusic(); }, { once:true });
+
+/* ===== Sesión y estado de pantalla ===== */
+let session = null;
+try { session = JSON.parse(kv.get('bc_session') || 'null'); } catch (e) {}
+const view = { drawer:null, calOpen:true, cal:{ y:new Date().getFullYear(), m:new Date().getMonth() }, sel:todayStr(),
+  tab:'asistencia', date:todayStr(), confirmDel:null, login:'student' };
+const modeBanner = () => Store.remote ? '' : '<div class="demo">MODO PRUEBA: los datos se guardan solo en este navegador. Mira LEEME.md para compartirlos con toda la clase.</div>';
+const connPill = () => '<span class="pill" id="conn" hidden>SIN CONEXIÓN</span>';
+const sortedStudents = () => Object.entries(db.students).sort((a, b) => String(a[1].name).localeCompare(String(b[1].name), 'es'));
+const myRequests = () => Object.entries(db.requests).filter(([, r]) => r.sid === (session && session.id)).sort((a, b) => b[1].ts - a[1].ts);
+const statusOf = k => STATUS.find(s => s.k === k) || STATUS[0];
+
+function logout(){
+  session = null; kv.del('bc_session'); Music.stop(); stopRoom(); view.drawer = null; view.login = 'student'; mount();
+}
+function mount(){
+  stopRoom();
+  if (session && session.role === 'student' && !db.students[session.id]) { session = null; kv.del('bc_session'); }
+  if (!session) renderLogin();
+  else if (session.role === 'teacher') renderTeacher();
+  else renderStudent();
+}
+function onData(){ if (!session) return; refreshAll(); }
+function refreshAll(){
+  if (!session) return;
+  if (session.role === 'teacher') refreshTeacher();
+  else { if (!db.students[session.id]) { logout(); return; } refreshStudent(); }
+  const c = $('#conn'); if (c) c.hidden = connected;
+}
+const focusInside = el => el && el.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+
+/* ===== Inicio de sesión ===== */
+function renderLogin(){
+  const hasCode = !!db.config.code, t = view.login === 'teacher';
+  app.innerHTML = `${modeBanner()}
+  <main class="box login">
+    <div class="logo">${px('box')}${px('coin')}${px('mail')}</div>
+    <h1 class="center">BUZÓN DE CUPONES</h1>
+    ${t ? `
+      <form class="col" data-form="login-teacher">
+        <label>${hasCode ? 'Código del profesor' : 'Crea tu código de profesor (mínimo 4 caracteres)'}
+          <input type="password" name="code" autocomplete="${hasCode ? 'current-password' : 'new-password'}" required minlength="4"></label>
+        <button class="btn pk" type="submit">${hasCode ? 'ENTRAR' : 'CREAR CÓDIGO'}</button>
+      </form>
+      <button class="linkbtn" data-act="login-mode" data-arg="student">Volver a la entrada de alumnos</button>`
+    : `
+      <form class="col" data-form="login-student">
+        <label>Tu nombre<input type="text" name="name" autocomplete="off" autocapitalize="words" required></label>
+        <button class="btn" type="submit">ENTRAR</button>
+      </form>
+      <button class="linkbtn" data-act="login-mode" data-arg="teacher">Soy el profesor</button>`}
+    <p class="msg" id="msg"></p>
+    ${connPill()}
+  </main>`;
+  const c = $('#conn'); if (c) c.hidden = connected;
+}
+const loginMsg = t => { const m = $('#msg'); if (m) m.textContent = t; };
+
+/* ===== Calendario ===== */
+function renderCalendar(){
+  const el = $('#cal'); if (!el) return;
+  const { y, m } = view.cal, first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
+  const title = first.toLocaleDateString('es-ES', { month:'long', year:'numeric' });
+  const td = todayStr(), me = session.id;
+  let cells = '';
+  for (let i = 0; i < lead; i++) cells += '<span class="cell empty"></span>';
+  for (let d = 1; d <= days; d++) {
+    const dt = new Date(y, m, d), s = ymd(dt), dow = dt.getDay(), at = db.attendance[s];
+    let st = '';
+    if (at && at[me] === 'c') st = px('coin', 'mini');
+    else if (at && at[me]) st = px('check', 'mini');
+    else if (at && s <= td) st = px('cross', 'mini');
+    cells += `<button class="cell ${dow === 0 || dow === 6 ? 'we' : ''} ${s === td ? 'today' : ''} ${s === view.sel ? 'sel' : ''}" data-act="day" data-arg="${s}">${d}${st}${db.tasks[s] ? '<i class="dot"></i>' : ''}</button>`;
+  }
+  const at = db.attendance[view.sel];
+  let estado = 'Aún no se ha pasado lista este día.';
+  if (at) estado = at[me] === 'c' ? 'Asististe y recibiste un cupón.' : at[me] ? 'Asististe a clase.' : 'No consta tu asistencia.';
+  const mine = myRequests().filter(([, r]) => r.date === view.sel);
+  el.innerHTML = `
+    <div class="calhead">
+      <h2>${esc(title.toUpperCase())}</h2>
+      <div class="row">
+        <button class="btn sm gh" data-act="cal-prev" aria-label="Mes anterior">&lt;</button>
+        <button class="btn sm gh" data-act="cal-next" aria-label="Mes siguiente">&gt;</button>
+        <button class="btn sm cy" data-act="cal-toggle">${view.calOpen ? 'OCULTAR' : 'MOSTRAR'}</button>
+      </div>
+    </div>
+    ${view.calOpen ? `<div class="calbody">
+      <div><div class="grid">${['L','M','X','J','V','S','D'].map(x => `<span class="dow">${x}</span>`).join('')}${cells}</div></div>
+      <div class="day">
+        <span class="when">${esc(longDate(view.sel))}</span>
+        <p>${esc(estado)}</p>
+        <h3 class="h sm" style="color:var(--pink)">TAREAS DEL DÍA</h3>
+        <p class="tasks">${db.tasks[view.sel] ? esc(db.tasks[view.sel]) : '<span class="dim">Sin tareas anotadas.</span>'}</p>
+        ${mine.length ? `<p class="dim">Peticiones este día: ${mine.map(([, r]) => esc(r.type)).join(', ')}</p>` : ''}
+      </div>
+    </div>` : ''}`;
+}
+
+/* ===== Pantalla del alumno ===== */
+function renderStudent(){
+  const me = db.students[session.id];
+  app.innerHTML = `${modeBanner()}
+  <header class="box top">
+    <div class="who"><img class="px av" id="hdr-av" src="${avatarURL(me.avatar)}" alt=""><span class="h" id="hdr-name">${esc(me.name)}</span></div>
+    <div class="row wrap">${connPill()}<span class="coins" id="coins"></span><button class="btn sm gh" data-act="logout">SALIR</button></div>
+  </header>
+  <section class="box" id="cal"></section>
+  <section class="room-wrap">
+    <canvas id="room" width="160" height="90" aria-label="Tu habitación"></canvas>
+    <nav class="menu" id="menu"></nav>
+    <p class="hint">Toca el avatar, el ordenador, la ventana, la estantería o el póster.</p>
+  </section>
+  <section class="box drawer" id="drawer" hidden></section>`;
+  startRoom(); refreshStudent();
+}
+function refreshStudent(){
+  const me = db.students[session.id]; if (!me || !$('#cal')) return;
+  const c = me.coupons || 0, pend = myRequests().filter(([, r]) => r.status !== 'entregado').length;
+  $('#coins').innerHTML = `${px('coin', 'mini')} x${c}`;
+  $('#hdr-av').src = avatarURL(me.avatar); $('#hdr-name').textContent = me.name;
+  const mb = (k, label, cls) => `<button class="btn sm ${cls} ${view.drawer === k ? 'on' : ''}" data-act="drawer" data-arg="${k}">${label}</button>`;
+  $('#menu').innerHTML = mb('cupon', 'GASTAR CUPÓN', '') + mb('buzon', `BUZÓN${pend ? `<span class="badge">${pend}</span>` : ''}`, 'cy') +
+    mb('tablon', 'TABLÓN', 'cy') + mb('inventario', 'INVENTARIO', 'cy') + mb('avatar', 'AVATAR', 'pk') + mb('fondo', 'FONDO Y MÚSICA', 'pk');
+  if (!focusInside($('#cal'))) renderCalendar();
+  const dr = $('#drawer');
+  if (view.drawer && !focusInside(dr)) renderDrawer();
+  redrawRoom();
+}
+function openDrawer(name){
+  view.drawer = name; refreshStudent();
+  const dr = $('#drawer'); if (dr && dr.scrollIntoView) dr.scrollIntoView({ behavior: REDUCE ? 'auto' : 'smooth', block:'nearest' });
+}
+function renderDrawer(){
+  const dr = $('#drawer'); if (!dr) return;
+  if (!view.drawer) { dr.hidden = true; dr.innerHTML = ''; return; }
+  const D = DRAWERS[view.drawer]; if (!D) { dr.hidden = true; return; }
+  dr.hidden = false;
+  dr.innerHTML = `<div class="row between"><h2>${D.title}</h2><button class="btn sm gh" data-act="close" aria-label="Cerrar">X</button></div>${D.body()}`;
+}
+const DRAWERS = {
+  cupon: { title:'GASTAR CUPÓN', body(){
+    const me = db.students[session.id], c = me.coupons || 0;
+    if (c < 1) return `<p>No tienes cupones ahora mismo. Recibes uno cuando el profesor te marca la asistencia en clase.</p>`;
+    return `<p>Tienes <b>${c}</b> cupón${c > 1 ? 'es' : ''}. Cada cupón es una sola petición, así que cuéntalo bien.</p>
+    <form class="col" data-form="request">
+      <label>Tipo de proyecto<select name="type">${TYPES.map(t => `<option>${t}</option>`).join('')}</select></label>
+      <label>Qué quieres crear<textarea name="desc" required minlength="10" maxlength="900" placeholder="Describe tu idea en dos o tres frases."></textarea></label>
+      <label>Estilo y referencias (colores, ejemplos, enlaces)<input name="refs" maxlength="300"></label>
+      <label>Resultado esperado<input name="goal" maxlength="200" placeholder="Qué quieres recibir al final"></label>
+      <button class="btn" type="submit">ENVIAR AL BUZÓN (GASTA 1 CUPÓN)</button>
+    </form>`;
+  } },
+  buzon: { title:'MI BUZÓN', body(){
+    const list = myRequests();
+    if (!list.length) return '<p class="dim">Todavía no has enviado ninguna petición.</p>';
+    return `<div class="list">${list.map(([id, r]) => {
+      const st = statusOf(r.status), idx = Math.max(0, STATUS.findIndex(s => s.k === st.k)), step = st.k === 'rehaciendo' ? 3 : idx;
+      const link = safeUrl(r.url);
+      return `<article class="item plain ${st.cls}">
+        <div class="row between wrap"><b>${esc(r.type)}</b><span class="dim">${esc(longDate(r.date))}</span></div>
+        <p class="dim">${esc(r.desc.length > 140 ? r.desc.slice(0, 140) + '…' : r.desc)}</p>
+        <div class="stat">${px(st.icon)}<div><div class="lbl">${st.label}</div><div class="dim">${st.txt}</div></div></div>
+        <div class="steps">${STATUS.map((s, n) => `<i class="${n <= step ? 'f' : ''}"></i>`).join('')}</div>
+        ${st.k === 'entregado' && link ? `<a class="btn gr sm" style="text-align:center;text-decoration:none" href="${esc(link)}" target="_blank" rel="noopener noreferrer">VER MI PROYECTO</a>` : ''}
+      </article>`;
+    }).join('')}</div>`;
+  } },
+  tablon: { title:'TABLÓN DE LA CLASE', body(){
+    const td = todayStr(), list = sortedStudents(), at = db.attendance[td] || {};
+    const spent = new Set(Object.values(db.requests).filter(r => r.date === td).map(r => r.sid));
+    return `<p class="dim">Cupones gastados hoy: <b style="color:var(--gold)">${spent.size}</b> de ${list.length}</p>
+    <div class="list">${list.map(([id, s]) => `<div class="item"><img class="px avs" src="${avatarURL(s.avatar)}" alt="">
+      <div><b>${esc(s.name)}</b><div class="dim">${at[id] ? 'En clase hoy' : 'Sin asistencia hoy'}</div></div>
+      <div class="row">${spent.has(id) ? `${px('mail', 'mini')}<span class="tag ok">GASTADO</span>` : `${px('coin', 'mini')}<span class="tag">x${s.coupons || 0}</span>`}</div></div>`).join('')}</div>`;
+  } },
+  inventario: { title:'INVENTARIO', body(){
+    const me = db.students[session.id], c = me.coupons || 0, mine = myRequests();
+    const done = mine.filter(([, r]) => r.status === 'entregado').length;
+    const days = Object.values(db.attendance).filter(a => a[session.id]).length;
+    return `<div><p class="dim" style="margin-bottom:8px">Cupones (máximo ${MAX_COUPONS})</p>
+      <div class="slots">${Array.from({ length:MAX_COUPONS }, (_, i) => `<div class="slot">${i < c ? px('coin') : ''}</div>`).join('')}</div></div>
+      <div class="stats"><span>PETICIONES <b>${mine.length}</b></span><span>ENTREGADAS <b>${done}</b></span><span>DÍAS EN CLASE <b>${days}</b></span></div>
+      ${done ? `<div class="row wrap">${Array.from({ length:Math.min(done, 12) }, () => px('chest')).join('')}</div>` : '<p class="dim">Tus proyectos entregados aparecerán aquí como cofres.</p>'}`;
+  } },
+  avatar: { title:'ELIGE TU AVATAR', body(){
+    const cur = (db.students[session.id].avatar || 0) % AV.length;
+    return `<div class="avgrid">${AV.map((a, i) => `<button class="avbtn ${i === cur ? 'on' : ''}" data-act="avatar" data-arg="${i}" title="${esc(a.n)}" aria-label="${esc(a.n)}"><img class="px av" src="${avatarURL(i)}" alt=""></button>`).join('')}</div>`;
+  } },
+  fondo: { title:'FONDO Y MÚSICA', body(){
+    const me = db.students[session.id], bg = me.bg || 'noche', mu = me.music >= 0 ? me.music : -1;
+    return `<div><p class="dim" style="margin-bottom:8px">Fondo de tu ventana</p>
+      <div class="row wrap">${BGS.map(([k, n]) => `<button class="btn sm ${k === bg ? 'on' : 'gh'}" data-act="bg" data-arg="${k}">${n.toUpperCase()}</button>`).join('')}</div></div>
+      <div><p class="dim" style="margin-bottom:8px">Música de la habitación</p>
+      <div class="row wrap"><button class="btn sm ${mu < 0 ? 'on' : 'gh'}" data-act="music" data-arg="-1">SIN MÚSICA</button>
+      ${TRACKS.map((t, i) => `<button class="btn sm ${mu === i ? 'on' : 'gh'}" data-act="music" data-arg="${i}">${t.name.toUpperCase()}</button>`).join('')}</div></div>`;
+  } }
+};
+
+/* ===== Panel del profesor ===== */
+function renderTeacher(){
+  app.innerHTML = `${modeBanner()}
+  <header class="box top">
+    <div class="who"><img class="px" src="${spriteURL('box')}" alt=""><span class="h">PANEL DEL PROFESOR</span></div>
+    <div class="row wrap">${connPill()}<button class="btn sm gh" data-act="logout">SALIR</button></div>
+  </header>
+  <section class="box col" id="panel"></section>`;
+  refreshTeacher();
+}
+function refreshTeacher(){
+  const p = $('#panel'); if (!p || focusInside(p)) return;
+  const td = todayStr(), list = sortedStudents();
+  const spent = new Set(Object.values(db.requests).filter(r => r.date === td).map(r => r.sid)).size;
+  const pend = Object.values(db.requests).filter(r => r.status !== 'entregado').length;
+  const tb = (k, label) => `<button class="btn sm ${view.tab === k ? 'on' : 'gh'}" data-act="tab" data-arg="${k}">${label}</button>`;
+  const body = view.tab === 'peticiones' ? tabPeticiones() : view.tab === 'clase' ? tabClase() : tabAsistencia();
+  p.innerHTML = `<div class="tabs">${tb('asistencia', 'ASISTENCIA')}${tb('peticiones', `PETICIONES${pend ? `<span class="badge">${pend}</span>` : ''}`)}${tb('clase', 'CLASE')}</div>
+    <div class="stats"><span>ALUMNOS <b>${list.length}</b></span><span>CUPONES GASTADOS HOY <b>${spent}</b></span><span>PENDIENTES <b>${pend}</b></span></div>${body}`;
+  const c = $('#conn'); if (c) c.hidden = connected;
+}
+function tabAsistencia(){
+  const d = view.date, at = db.attendance[d] || {}, list = sortedStudents(), present = list.filter(([id]) => at[id]).length;
+  return `<div class="row between wrap"><label>Fecha<input type="date" id="att-date" value="${d}"></label><span class="h sm">PRESENTES ${present}/${list.length}</span></div>
+  ${d !== todayStr() ? '<p class="warn">Estás pasando lista de otro día: no se reparten cupones.</p>' : ''}
+  <div class="rolls">${list.map(([id, s]) => {
+    const v = at[id];
+    return `<div class="roll ${v ? 'on' : ''}"><img class="px avs" src="${avatarURL(s.avatar)}" alt="">
+      <div><b>${esc(s.name)}</b><div class="dim">Cupones: ${s.coupons || 0}/${MAX_COUPONS}</div></div>
+      ${v ? `<div class="right"><span class="tag ok">${v === 'c' ? '+1 CUPÓN' : 'PRESENTE'}</span><button class="btn gh sm" data-act="undo" data-arg="${id}">DESHACER</button></div>`
+          : `<button class="btn gr" data-act="present" data-arg="${id}">PRESENTE</button>`}</div>`;
+  }).join('') || '<p class="dim">Aún no hay alumnos. Añádelos en la pestaña CLASE.</p>'}</div>
+  <div class="row wrap"><button class="btn sm cy" data-act="voice">PROBAR VOZ</button><span class="dim">Al pulsar PRESENTE suena: «El alumno … ha recibido un cupón».</span></div>`;
+}
+function tabPeticiones(){
+  const all = Object.entries(db.requests).sort((a, b) => (a[1].status === 'entregado') - (b[1].status === 'entregado') || a[1].ts - b[1].ts);
+  if (!all.length) return '<p class="dim">No hay peticiones todavía.</p>';
+  return `<div class="list">${all.map(([id, r]) => {
+    const st = statusOf(r.status);
+    return `<article class="req ${st.cls}">
+      <div class="row between wrap"><b class="h sm">${esc(r.name)}</b><span class="tag">${esc(r.type)}</span></div>
+      <p class="dim">${esc(longDate(r.date))} · ${new Date(r.ts).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })}</p>
+      <p class="desc">${esc(r.desc)}</p>
+      ${r.refs ? `<p class="dim">Referencias: ${esc(r.refs)}</p>` : ''}${r.goal ? `<p class="dim">Resultado esperado: ${esc(r.goal)}</p>` : ''}
+      <div class="stat">${px(st.icon)}<div class="lbl">${st.label}</div></div>
+      <div class="row wrap">${STATUS.slice(0, 4).map(s => `<button class="btn sm ${s.k === r.status ? 'on' : 'gh'}" data-act="status" data-arg="${id}" data-arg2="${s.k}">${s.label}</button>`).join('')}
+        <button class="btn sm cy" data-act="copy" data-arg="${id}">COPIAR</button></div>
+      <div class="row"><input id="url-${id}" placeholder="Enlace del proyecto (https://...)" value="${esc(r.url || '')}"><button class="btn sm gr" data-act="deliver" data-arg="${id}">ENTREGAR</button></div>
+    </article>`;
+  }).join('')}</div>`;
+}
+function tabClase(){
+  const list = sortedStudents();
+  return `<h2>ALUMNOS</h2>
+  <form class="col" data-form="add-students">
+    <label>Añadir alumnos (uno por línea)<textarea name="names" placeholder="Lucía&#10;Marcos&#10;Aitana"></textarea></label>
+    <button class="btn sm" type="submit">AÑADIR</button>
+  </form>
+  <div class="list">${list.map(([id, s]) => `<div class="item"><img class="px avs" src="${avatarURL(s.avatar)}" alt="">
+    <div><b>${esc(s.name)}</b><div class="dim">Cupones: ${s.coupons || 0}/${MAX_COUPONS}</div></div>
+    <div class="row wrap"><button class="btn sm gh" data-act="coupon" data-arg="${id}" data-arg2="-1" aria-label="Quitar cupón">-1</button>
+      <button class="btn sm gh" data-act="coupon" data-arg="${id}" data-arg2="1" aria-label="Dar cupón">+1</button>
+      <button class="btn sm ${view.confirmDel === id ? 'rd' : 'gh'}" data-act="delstudent" data-arg="${id}">${view.confirmDel === id ? '¿SEGURO?' : 'BORRAR'}</button></div></div>`).join('')}</div>
+  <h2>TAREAS DEL DÍA</h2>
+  <form class="col" data-form="task">
+    <label>Fecha<input type="date" name="date" value="${view.date}" required></label>
+    <label>Tareas que verán los alumnos en el calendario<textarea name="text" id="task-text">${esc(db.tasks[view.date] || '')}</textarea></label>
+    <button class="btn sm" type="submit">GUARDAR TAREAS</button>
+  </form>
+  <h2>CÓDIGO DE PROFESOR</h2>
+  <form class="col" data-form="set-code">
+    <label>Nuevo código<input type="password" name="code" minlength="4" autocomplete="new-password" required></label>
+    <button class="btn sm" type="submit">CAMBIAR CÓDIGO</button>
+  </form>`;
+}
+
+/* ===== Acciones ===== */
+const handlers = {
+  'login-mode': a => { view.login = a; renderLogin(); },
+  logout,
+  drawer: a => { view.drawer = view.drawer === a ? null : a; refreshStudent(); if (view.drawer) { const dr = $('#drawer'); dr && dr.scrollIntoView && dr.scrollIntoView({ behavior:REDUCE ? 'auto' : 'smooth', block:'nearest' }); } },
+  close: () => { view.drawer = null; refreshStudent(); },
+  'cal-prev': () => { const c = view.cal; c.m--; if (c.m < 0) { c.m = 11; c.y--; } renderCalendar(); },
+  'cal-next': () => { const c = view.cal; c.m++; if (c.m > 11) { c.m = 0; c.y++; } renderCalendar(); },
+  'cal-toggle': () => { view.calOpen = !view.calOpen; renderCalendar(); },
+  day: a => { view.sel = a; renderCalendar(); },
+  avatar: a => put(`students/${session.id}/avatar`, +a),
+  bg: a => put(`students/${session.id}/bg`, a),
+  music: a => { put(`students/${session.id}/music`, +a); Music.play(+a); },
+  tab: a => { view.tab = a; refreshTeacher(); },
+  voice: () => speak('Prueba de voz. El alumno de ejemplo ha recibido un cupón'),
+  present: async id => {
+    const st = db.students[id]; if (!st) return;
+    const d = view.date; if (db.attendance[d] && db.attendance[d][id]) return;
+    const grant = d === todayStr() && (st.coupons || 0) < MAX_COUPONS;
+    if (grant) speak(`El alumno ${st.name} ha recibido un cupón`);
+    else if (d === todayStr()) toast(`${st.name} ya tiene el máximo de cupones (${MAX_COUPONS}). Asistencia marcada sin cupón.`);
+    const coupons = (st.coupons || 0) + 1;
+    await put(`attendance/${d}/${id}`, grant ? 'c' : 'n');
+    if (grant) await put(`students/${id}/coupons`, coupons);
+  },
+  undo: async id => {
+    const d = view.date, v = db.attendance[d] && db.attendance[d][id]; if (!v) return;
+    await put(`attendance/${d}/${id}`, null);
+    if (v === 'c' && db.students[id]) await put(`students/${id}/coupons`, Math.max(0, (db.students[id].coupons || 0) - 1));
+  },
+  status: (id, k) => put(`requests/${id}/status`, k),
+  deliver: async id => {
+    const inp = $('#url-' + id), url = inp ? inp.value.trim() : '';
+    if (url && !safeUrl(url)) { toast('El enlace debe empezar por http:// o https://', 'err'); return; }
+    await put(`requests/${id}/url`, url || null);
+    await put(`requests/${id}/status`, 'entregado');
+    toast('Marcada como entregada.');
+  },
+  copy: id => {
+    const r = db.requests[id]; if (!r) return;
+    const text = `Tipo: ${r.type}\nAlumno: ${r.name}\nDescripción: ${r.desc}\nReferencias: ${r.refs || '-'}\nResultado esperado: ${r.goal || '-'}`;
+    try { navigator.clipboard.writeText(text).then(() => toast('Petición copiada.'), () => toast('No se pudo copiar.', 'err')); } catch (e) { toast('No se pudo copiar.', 'err'); }
+  },
+  coupon: async (id, n) => { const s = db.students[id]; if (!s) return; await put(`students/${id}/coupons`, Math.max(0, Math.min(MAX_COUPONS, (s.coupons || 0) + (+n)))); },
+  delstudent: async id => {
+    if (view.confirmDel !== id) { view.confirmDel = id; refreshTeacher(); return; }
+    view.confirmDel = null; await put(`students/${id}`, null);
+  }
+};
+const forms = {
+  'login-student': f => {
+    const q = norm(new FormData(f).get('name')); if (!q) return;
+    const list = Object.entries(db.students);
+    let hit = list.filter(([, s]) => norm(s.name) === q);
+    if (hit.length !== 1) hit = list.filter(([, s]) => norm(s.name).split(' ')[0] === q);
+    if (!list.length) { loginMsg('Todavía no hay alumnos. Pide al profesor que pase la lista.'); return; }
+    if (hit.length !== 1) { loginMsg(hit.length > 1 ? 'Hay varios alumnos con ese nombre. Escribe también tu apellido.' : 'No encuentro ese nombre. Escríbelo como lo apuntó el profesor.'); return; }
+    session = { role:'student', id:hit[0][0] }; kv.set('bc_session', JSON.stringify(session)); view.drawer = null;
+    mount(); applyMusic();
+  },
+  'login-teacher': async f => {
+    const code = String(new FormData(f).get('code') || ''); if (code.length < 4) { loginMsg('Mínimo 4 caracteres.'); return; }
+    const h = await hashCode(code);
+    if (!db.config.code) { await put('config/code', h); }
+    else if (db.config.code !== h) { loginMsg('Código incorrecto.'); return; }
+    session = { role:'teacher' }; kv.set('bc_session', JSON.stringify(session)); mount();
+  },
+  request: async f => {
+    try { db = normalize(await Store.load()); } catch (e) {}
+    const cur = db.students[session.id];
+    if (!cur || (cur.coupons || 0) < 1) { toast('No tienes cupones.', 'err'); refreshStudent(); return; }
+    const d = new FormData(f), desc = String(d.get('desc') || '').trim();
+    if (desc.length < 10) { toast('Cuéntalo con un poco más de detalle (mínimo 10 letras).', 'err'); return; }
+    const id = uid('r_');
+    await put(`students/${session.id}/coupons`, cur.coupons - 1);
+    await put(`requests/${id}`, { sid:session.id, name:cur.name, type:String(d.get('type')), desc, refs:String(d.get('refs') || '').trim(), goal:String(d.get('goal') || '').trim(), status:'enviado', ts:Date.now(), date:todayStr() });
+    view.drawer = 'buzon'; refreshStudent(); toast('¡Cupón gastado! Tu petición está en el buzón.');
+  },
+  'add-students': async f => {
+    const names = String(new FormData(f).get('names') || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!names.length) return;
+    let n = Object.keys(db.students).length;
+    for (const name of names) {
+      if (Object.values(db.students).some(s => norm(s.name) === norm(name))) continue;
+      await put(`students/${uid('s_')}`, { name:name.slice(0, 40), avatar:n % AV.length, coupons:0, bg:'noche', music:-1 }); n++;
+    }
+    view.tab = 'clase'; refreshTeacher(); toast('Alumnos añadidos.');
+  },
+  task: async f => {
+    const d = new FormData(f), date = String(d.get('date') || view.date), text = String(d.get('text') || '').trim();
+    await put(`tasks/${date}`, text || null); toast('Tareas guardadas.');
+  },
+  'set-code': async f => {
+    const code = String(new FormData(f).get('code') || ''); if (code.length < 4) return;
+    await put('config/code', await hashCode(code)); f.reset(); toast('Código cambiado.');
+  }
+};
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  const h = handlers[el.dataset.act]; if (h) h(el.dataset.arg, el.dataset.arg2, el);
+});
+app.addEventListener('submit', e => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const h = forms[f.dataset.form]; if (h) h(f);
+});
+app.addEventListener('change', e => {
+  if (e.target.id === 'att-date') { view.date = e.target.value || todayStr(); refreshTeacher(); }
+  if (e.target.name === 'date' && e.target.closest('[data-form="task"]')) {
+    view.date = e.target.value || todayStr(); const t = $('#task-text'); if (t) t.value = db.tasks[view.date] || '';
+  }
+});
+
+/* ===== Arranque ===== */
+(async function boot(){
+  app.innerHTML = '<p class="h center" style="margin-top:40px">CONECTANDO...</p>';
+  await poll(true);
+  mount();
+  setInterval(() => { if (!document.hidden) poll(); }, 4000);
+})();
+})();
+</script>
+</body>
+</html>
